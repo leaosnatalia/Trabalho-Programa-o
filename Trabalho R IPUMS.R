@@ -61,10 +61,26 @@ IPUMS %>%
 ####################################
 #          ALTERNATIVA 1
 ####################################
-# Gravar os dados no mysql
-# https://stackoverflow.com/questions/3635166/how-to-import-csv-file-to-mysql-table
+# Leitura do arquivo linha a linha e totalização "manual"
+# Executar o trecho abaixo de uma só vez, selecionando todas as linhas.
+con <- file("ipumsi_00001.csv", open="r")
+nCount <- 0
+start <- Sys.time()
+while ( TRUE ) {
+  line <- readLines(con, n = 1)
+  if ( length(line) == 0 ) {
+    break
+  }
+  if (nCount == 1*1000*1000) {
+    break
+  }
+  nCount <- nCount+1
+}
+close(con)
+print(paste("Tempo decorrido em segundos:", difftime(Sys.time(), start, units="secs")))
 
 ####################################
 #          ALTERNATIVA 2
 ####################################
-# Leitura do arquivo linha a linha e totalização no código
+# Gravar os dados no mysql
+# https://stackoverflow.com/questions/3635166/how-to-import-csv-file-to-mysql-table
