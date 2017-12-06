@@ -17,43 +17,61 @@ library(formattable) # mudar valores para porcentagens
 setwd("C:/Users/leaos/Desktop/TrabalhoR/Dados")
 
 #Abrindo o banco de dados
-PNAD1976_orig <- read_spss("PNAD1976.sav")
 
-names(PNAD1976_orig)
+getAnoPNAD <- function(i) {
+  switch(i,
+    1976,
+    1985
+  )
+}
 
-PNAD1976 <- PNAD1976_orig %>%
-  rename(UF = v0003, 
-         peso = v2997,
-         sexo = v2103,
-         idade = v2105,
-         raca = v0303,
-         edu = v2227,
-         renda = v2308) %>% 
-  select(UF, peso, sexo, idade, raca, edu, renda) %>% 
-  filter(idade >=25 & idade <=55)
+getRenameList <- function(i){
+  switch(i,
+    c(v0003="UF", v2997="peso", v2103="sexo", v2105="idade", v0303="raca", v2227="edu", v2308="renda"),
+    c(v0003="UF", v2930="peso", v2121="sexo", v2105="idade", v0303="raca", v2227="edu", v2308="renda")
+  )
+}
 
-PNAD1976 %>% 
-  tabyl(idade)
+getFileName <- function(i) {
+  switch(i,
+    "Pnad 1976 - Registros de Pessoas e Domicílios.sav",
+    "Pnad 1985 - Registros de Pessoas e Domicílios.sav" #a confirmar
+  )
+}
 
-# criando regiao variÃ¡vel 
-PNAD1976$regiao <- case_when(PNAD1976$UF %in% c(31,32,33) ~ "sul",
-                             PNAD1976$UF %in% c(11,21,41,43) ~ "sudeste", 
-                             PNAD1976$UF %in% c(61,77,78) ~ "centro-oeste",
-                             PNAD1976$UF %in% c(71,72,73,74,75,76) ~ "norte",
-                             TRUE ~ "nordeste")
+getRenameListUF <- function(i, UF){
+  switch(i,
+   case_when(UF==31~"PR", UF==32~"SC", UF==33~"RS", UF==11~"RJ", UF==21~"SP", UF==41~"MG", UF==43~"ES", UF==61~"DF", UF==77~"MT", UF==78~"GO", UF==71~"RO", UF==72~"AC", UF==73~"AM", UF==74~"RR", UF==75~"PA", UF==76~"AP", UF==51~"MA", UF==52~"PI", UF==53~"CE", UF==54~"RN", UF==55~"PA", UF==56~"PE", UF==57~"AL", UF==58~"SE", UF==59~"BA"),
+   case_when(UF==31~"PR", UF==32~"SC", UF==33~"RS", UF==11~"RJ", UF==21~"SP", UF==41~"MG", UF==43~"ES", UF==61~"DF", UF==77~"MT", UF==78~"GO", UF==71~"RO", UF==72~"AC", UF==73~"AM", UF==74~"RR", UF==75~"PA", UF==76~"AP", UF==51~"MA", UF==52~"PI", UF==53~"CE", UF==54~"RN", UF==55~"PA", UF==56~"PE", UF==57~"AL", UF==58~"SE", UF==59~"BA")
+  )
+}
 
-PNAD1976 %>% 
-  tabyl(regiao)
 
-PNAD1976 <- PNAD1976 %>% 
-  mutate(sexo = ifelse(sexo == 1, "homem", "mulher"))
+for (i in 1:1) {
+  #names(PNAD1976_orig)
+  PNAD_orig <- read_spss(getFileName(i))
 
-PNAD1976 %>% 
-  tabyl(sexo)
+  PNAD$ano <- getAnoPNAD(i)
+    
+  PNAD <- PNAD_orig %>%
+    plyr::rename(getRenameList(i)) %>% 
+    select(UF, peso, sexo, idade, raca, edu, renda) %>% 
+    filter(idade >=25 & idade <=55)
+  
+  PNAD <- PNAD %>% 
+    mutate(UF = getRenameListUF(i, UF))
 
-PNAD1976 <- PNAD1976 %>% 
-  mutate(edu = case_when(edu == 1 | edu == 2 ~ "ensfund", 
-                         edu == 3 | edu == 4 ~ "ensmedio",
-                         edu == 5 ~ "enssuperior")) 
-PNAD1976 %>% 
-  tabyl(edu)
+  PNAD <- PNAD %>% 
+    mutate(sexo = ifelse(sexo == 1, "homem", "mulher"))
+  
+  PNAD <- PNAD %>% 
+    mutate(edu = case_when(edu == 1 | edu == 2 ~ "ensfund", 
+                           edu == 3 | edu == 4 ~ "ensmedio",
+                           edu == 5 ~ "enssuperior"))
+}
+
+PNAD$regiao <- case_when(PNAD$UF %in% c(PR,SC,RS) ~ "sul",
+                         PNAD$UF %in% c(RJ,SP,MG,ES) ~ "sudeste", 
+                         PNAD$UF %in% c(DF,MT,GO) ~ "centro-oeste",
+                         PNAD$UF %in% c(RO,AC,AM,RR,PA,AP) ~ "norte",
+                         TRUE ~ "nordeste")
