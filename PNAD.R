@@ -51,12 +51,12 @@ for (i in 1:1) {
   #names(PNAD1976_orig)
   PNAD_orig <- read_spss(getFileName(i))
 
-  PNAD$ano <- getAnoPNAD(i)
-    
   PNAD <- PNAD_orig %>%
     plyr::rename(getRenameList(i)) %>% 
     select(UF, peso, sexo, idade, raca, edu, renda) %>% 
-    filter(idade >=25 & idade <=55)
+    filter(idade >=25 & idade <=55 & !is.na(renda) & (edu==3 | edu==4) )
+
+  PNAD$ano <- getAnoPNAD(i)
   
   PNAD <- PNAD %>% 
     mutate(UF = getRenameListUF(i, UF))
@@ -64,14 +64,19 @@ for (i in 1:1) {
   PNAD <- PNAD %>% 
     mutate(sexo = ifelse(sexo == 1, "homem", "mulher"))
   
-  PNAD <- PNAD %>% 
-    mutate(edu = case_when(edu == 1 | edu == 2 ~ "ensfund", 
-                           edu == 3 | edu == 4 ~ "ensmedio",
-                           edu == 5 ~ "enssuperior"))
+#  PNAD <- PNAD %>% 
+#    mutate(edu = case_when(edu == 1 | edu == 2 ~ "ensfund", 
+#                        edu == 3 | edu == 4 ~ "ensmedio",
+#                        edu == 5 ~ "enssuperior"))
+  
+  PNAD <- PNAD %>%
+    mutate(rendamedia = case_when(sexo == "mulher" ~ mean(PNAD$renda[PNAD$sexo=="mulher"]),
+                                  sexo == "homem" ~ mean(PNAD$renda[PNAD$sexo=="homem"])))
+  
 }
 
-PNAD$regiao <- case_when(PNAD$UF %in% c(PR,SC,RS) ~ "sul",
-                         PNAD$UF %in% c(RJ,SP,MG,ES) ~ "sudeste", 
-                         PNAD$UF %in% c(DF,MT,GO) ~ "centro-oeste",
-                         PNAD$UF %in% c(RO,AC,AM,RR,PA,AP) ~ "norte",
+PNAD$regiao <- case_when(PNAD$UF %in% c("PR","SC","RS") ~ "sul",
+                         PNAD$UF %in% c("RJ","SP","MG","ES") ~ "sudeste", 
+                         PNAD$UF %in% c("DF","MT","GO") ~ "centro-oeste",
+                         PNAD$UF %in% c("RO","AC","AM","RR","PA","AP") ~ "norte",
                          TRUE ~ "nordeste")
