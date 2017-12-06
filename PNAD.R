@@ -29,25 +29,31 @@ PNAD1976 <- PNAD1976_orig %>%
          raca = v0303,
          edu = v2227,
          renda = v2308) %>% 
-  select(UF, peso, sexo, idade, raca, edu, renda)
+  select(UF, peso, sexo, idade, raca, edu, renda) %>% 
+  filter(idade >=25 & idade <=55)
 
 PNAD1976 %>% 
-  tabyl(UF)
+  tabyl(idade)
 
+# criando regiao variável 
+PNAD1976$regiao <- case_when(PNAD1976$UF %in% c(31,32,33) ~ "sul",
+                             PNAD1976$UF %in% c(11,21,41,43) ~ "sudeste", 
+                             PNAD1976$UF %in% c(61,77,78) ~ "centro-oeste",
+                             PNAD1976$UF %in% c(71,72,73,74,75,76) ~ "norte",
+                             TRUE ~ "nordeste")
 
+PNAD1976 %>% 
+  tabyl(regiao)
 
-
-
-# modificar variável 
 PNAD1976 <- PNAD1976 %>% 
-  mutate(UF = case_when(UF %in% c(31,32,33) ~ "sul",
-                        UF %in% c(11,21,41,43) ~ "sudeste", 
-                        UF %in% c(61,77,78) ~ "centro-oeste",
-                        UF %in% c(71,72,73,74,75,76) ~ "norte",
-                        TRUE ~ "nordeste"
+  mutate(sexo = ifelse(sexo == 1, "homem", "mulher"))
 
+PNAD1976 %>% 
+  tabyl(sexo)
 
-# Filtrar os missings (NA)
-base_sem_missing <- base_nova %>% 
-  filter(!is.na(homo))
-
+PNAD1976 <- PNAD1976 %>% 
+  mutate(edu = case_when(edu == 1 | edu == 2 ~ "ensfund", 
+                         edu == 3 | edu == 4 ~ "ensmedio",
+                         edu == 5 ~ "enssuperior")) 
+PNAD1976 %>% 
+  tabyl(edu)
