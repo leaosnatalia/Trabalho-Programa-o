@@ -22,24 +22,32 @@ PNAD1976_orig <- read_spss("PNAD1976.sav")
 names(PNAD1976_orig)
 
 PNAD1976 <- PNAD1976_orig %>%
-  select(v0003, v2997, v2103, v2105, v0303, v2227, v2308)
-
-PNAD1976 <- PNAD1976 %>% 
   rename(UF = v0003, 
          peso = v2997,
          sexo = v2103,
          idade = v2105,
          raca = v0303,
          edu = v2227,
-         renda = v2308)
+         renda = v2308) %>% 
+  select(UF, peso, sexo, idade, raca, edu, renda)
+
+PNAD1976 %>% 
+  tabyl(UF)
+
+
+
+
+
+# modificar variável 
+PNAD1976 <- PNAD1976 %>% 
+  mutate(UF = case_when(UF %in% c(31,32,33) ~ "sul",
+                        UF %in% c(11,21,41,43) ~ "sudeste", 
+                        UF %in% c(61,77,78) ~ "centro-oeste",
+                        UF %in% c(71,72,73,74,75,76) ~ "norte",
+                        TRUE ~ "nordeste"
+
 
 # Filtrar os missings (NA)
 base_sem_missing <- base_nova %>% 
   filter(!is.na(homo))
 
-
-# modificar variável homo 
-base_sem_missing <- base_sem_missing %>% 
-  mutate(homo = case_when(homo <= 4 ~ "direita", 
-                          homo == 5 | homo == 6 ~ "centro",
-                          homo >= 7 ~ "esquerda"))
