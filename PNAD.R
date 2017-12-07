@@ -13,8 +13,11 @@ library(tidyverse)
 library(haven) # pacote para importar dados
 library(janitor) # pacote para sumarizar dados
 library(formattable) # mudar valores para porcentagens
+library(reshape2)
 
 setwd("C:/Users/leaos/Desktop/TrabalhoR/Dados")
+
+options(scipen = 999) 
 
 #Abrindo o banco de dados
 
@@ -31,7 +34,7 @@ getAnoPNAD <- function(i) {
 getRenameList <- function(i){
   switch(i,
     c(v0003="UF", v2997="peso", v2103="sexo", v2105="idade", v0303="raca", v2227="edu", v2308="renda"),
-    c(v0010="UF", v9991="peso", v0302="sexo", v0805="idade", v2301="raca", v0317="edu", v0537="renda"),
+    c(v0010="UF", v9991="peso", v0303="sexo", v0805="idade", v2301="raca", v0317="edu", v0537="renda"),
     c(uf="UF", v4729="peso", v0302="sexo", v8005="idade", v0404="raca", v0607="edu", v9532="renda"),
     c(UF="UF", v4729="peso", v0302="sexo", v8005="idade", v0404="raca", v0607="edu", v9532="renda"),
     c(UF="UF", v4729="peso", v0302="sexo", v8005="idade", v0404="raca", v0607="edu", v9532="renda")
@@ -59,7 +62,7 @@ getRenameListUF <- function(i, UF){
 }
 
 
-for (i in 1:1) {
+for (i in 2:2) {
   #names(PNAD1976_orig)
   if(i==1){
     PNAD_orig <- read_spss(getFileName(i))
@@ -89,7 +92,12 @@ for (i in 1:1) {
   
   PNAD <- PNAD %>% 
     unique()
-}
+  
+  PNAD <- dcast(PNAD,ano + UF ~ sexo, value.var="x")
+
+  PNAD$difrenda <- PNAD$homem/PNAD$mulher
+
+    }
 
 PNAD$regiao <- case_when(PNAD$UF %in% c("PR","SC","RS") ~ "sul",
                          PNAD$UF %in% c("RJ","SP","MG","ES") ~ "sudeste", 
