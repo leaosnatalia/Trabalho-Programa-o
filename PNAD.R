@@ -36,8 +36,8 @@ getRenameList <- function(i){
     c(v0003="UF", v2997="peso", v2103="sexo", v2105="idade", v0303="raca", v2227="edu", v2308="renda"),
     c(v0010="UF", v9991="peso", v0303="sexo", v0805="idade", v2301="raca", v0317="edu", v0537="renda"),
     c(uf="UF", v4729="peso", v0302="sexo", v8005="idade", v0404="raca", v0607="edu", v9532="renda"),
-    c(UF="UF", v4729="peso", v0302="sexo", v8005="idade", v0404="raca", v0607="edu", v9532="renda"),
-    c(UF="UF", v4729="peso", v0302="sexo", v8005="idade", v0404="raca", v0607="edu", v9532="renda")
+    c(UF="UF", v4729="peso", V0302="sexo", V8005="idade", V0404="raca", V0607="edu", V9532="renda"),
+    c(UF="UF", v4729="peso", V0302="sexo", V8005="idade", V0404="raca", V6007="edu", V9532="renda")
   )  
 }
 
@@ -61,6 +61,36 @@ getRenameListUF <- function(i, UF){
   )
 }
 
+getRenameListSex <- function(i,sexo){
+  switch(i,
+    case_when(sexo==1~"homem",sexo==2~"mulher"),
+    case_when(sexo==1~"homem",sexo==3~"mulher"),
+    case_when(sexo==2~"homem",sexo==4~"mulher"),
+    case_when(sexo==2~"homem",sexo==4~"mulher"),
+    case_when(sexo==2~"homem",sexo==4~"mulher")
+    )
+}
+
+getRenameListIdade <- function(i,idade){
+  switch(i,
+    case_when(idade>=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+"),
+    case_when(idade>=5~"0a24", idade>=6 & idade<=12~"25a54",idade>=13~"55+"),
+    case_when(idade>=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+"),
+    case_when(idade>=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+"),
+    case_when(idade>=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+")
+  )
+}
+
+getRenameListEdu <- function(i,edu){
+  switch(i,
+    case_when(edu %in% c(1,2)~"ensfund", edu %in% c(3,4)~"ensmedio", edu==5~"enssuperior"),
+    case_when(edu %in% c(4,5)~"ensfund", edu %in% c(2,3)~"ensmedio", edu==6~"enssuperior"),
+    case_when(edu %in% c(4,5)~"ensfund", edu %in% c(2,3)~"ensmedio", edu==6~"enssuperior"),
+    case_when(edu==4~"ensfund", edu %in% c(2,3)~"ensmedio", edu==6~"enssuperior"),
+    case_when(edu==4~"ensfund", edu %in% c(2,3,5)~"ensmedio",edu==8~"enssuperior")
+  ) 
+}
+
 
 for (i in 2:2) {
   #names(PNAD1976_orig)
@@ -73,20 +103,12 @@ for (i in 2:2) {
   PNAD <- PNAD_orig %>%
     plyr::rename(getRenameList(i)) %>% 
     select(UF, peso, sexo, idade, raca, edu, renda) %>% 
-    filter(idade >=25 & idade <=55 & !is.na(renda) & (edu==3 | edu==4) )
+    filter(idade=="25a54" & !is.na(renda) & (edu=="ensmedio") )
 
   PNAD$ano <- getAnoPNAD(i)
   
   PNAD <- PNAD %>% 
     mutate(UF = getRenameListUF(i, UF))
-
-  PNAD <- PNAD %>% 
-    mutate(sexo = ifelse(sexo == 1, "homem", "mulher"))
-  
-#  PNAD <- PNAD %>% 
-#    mutate(edu = case_when(edu == 1 | edu == 2 ~ "ensfund", 
-#                        edu == 3 | edu == 4 ~ "ensmedio",
-#                        edu == 5 ~ "enssuperior"))
 
   PNAD <- aggregate(PNAD$renda, list(ano=PNAD$ano, UF=PNAD$UF, sexo=PNAD$sexo), mean)  
   
