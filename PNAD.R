@@ -51,7 +51,7 @@ getFileName <- function(i) {
   )
 }
 
-getRenameListUF <- function(i, UF){
+getMutateCaseUF <- function(i, UF){
   switch(i,
    case_when(UF==11~"RJ", UF==21~"SP", UF==31~"PR", UF==32~"SC", UF==33~"RS", UF==41~"MG", UF==43~"ES", UF==51~"MA", UF==52~"PI", UF==53~"CE", UF==54~"RN", UF==55~"PB", UF==56~"PE", UF==57~"AL", UF==58~"SE", UF==59~"BA", UF==61~"DF", UF==71~"RO", UF==72~"AC", UF==73~"AM", UF==74~"RR", UF==75~"PA", UF==76~"AP", UF==77~"MT", UF==78~"GO"),
    case_when(UF %in% c(11, 12, 13)~"RJ", UF %in% c(21,22,23)~"SP", UF==31~"PR", UF==32~"SC", UF %in% c(33, 34)~"RS", UF %in% c(41,42,44)~"MG", UF==43~"ES", UF==51~"MA", UF==52~"PI", UF==53~"CE", UF==54~"RN", UF==55~"PB", UF==56~"PE", UF==57~"AL", UF==58~"SE", UF==59~"BA", UF==61~"DF", UF==71~"RO", UF==72~"AC", UF==73~"AM", UF==74~"RR", UF==75~"PA", UF==76~"AP", UF==81~"MS", UF==82~"MT", UF==83~"GO"),
@@ -61,7 +61,7 @@ getRenameListUF <- function(i, UF){
   )
 }
 
-getRenameListSex <- function(i,sexo){
+getMutateCaseSexo <- function(i,sexo){
   switch(i,
     case_when(sexo==1~"homem",sexo==2~"mulher"),
     case_when(sexo==1~"homem",sexo==3~"mulher"),
@@ -71,17 +71,17 @@ getRenameListSex <- function(i,sexo){
     )
 }
 
-getRenameListIdade <- function(i,idade){
+getMutateCaseIdade <- function(i,idade){
   switch(i,
-    case_when(idade>=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+"),
-    case_when(idade>=5~"0a24", idade>=6 & idade<=12~"25a54",idade>=13~"55+"),
-    case_when(idade>=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+"),
-    case_when(idade>=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+"),
-    case_when(idade>=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+")
+    case_when(idade<=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+"),
+    case_when(idade<=5~"0a24", idade>=6 & idade<=12~"25a54",idade>=13~"55+"),
+    case_when(idade<=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+"),
+    case_when(idade<=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+"),
+    case_when(idade<=24~"0a24", idade>=25 & idade<=54~"25a54",idade>=55~"55+")
   )
 }
 
-getRenameListEdu <- function(i,edu){
+getMutateCaseEdu <- function(i,edu){
   switch(i,
     case_when(edu %in% c(1,2)~"ensfund", edu %in% c(3,4)~"ensmedio", edu==5~"enssuperior"),
     case_when(edu %in% c(4,5)~"ensfund", edu %in% c(2,3)~"ensmedio", edu==6~"enssuperior"),
@@ -91,8 +91,9 @@ getRenameListEdu <- function(i,edu){
   ) 
 }
 
+PNAD_comb <- data.frame()
 
-for (i in 2:2) {
+for (i in 1:1) {
   #names(PNAD1976_orig)
   if(i==1){
     PNAD_orig <- read_spss(getFileName(i))
@@ -102,27 +103,34 @@ for (i in 2:2) {
   
   PNAD <- PNAD_orig %>%
     plyr::rename(getRenameList(i)) %>% 
-    select(UF, peso, sexo, idade, raca, edu, renda) %>% 
-    filter(idade=="25a54" & !is.na(renda) & (edu=="ensmedio") )
+    select(UF, peso, sexo, idade, raca, edu, renda)
+
+  PNAD <- PNAD %>% 
+    mutate(UF = getMutateCaseUF(i, UF)) %>% 
+    mutate(sexo = getMutateCaseSexo(i, sexo)) %>% 
+    mutate(idade = getMutateCaseIdade(i, idade)) %>% 
+    mutate(edu = getMutateCaseEdu(i, edu))
+
+  PNAD <- PNAD %>% 
+    filter(idade=="25a54" & !is.na(renda) & (edu=="ensmedio"))
 
   PNAD$ano <- getAnoPNAD(i)
-  
-  PNAD <- PNAD %>% 
-    mutate(UF = getRenameListUF(i, UF))
 
   PNAD <- aggregate(PNAD$renda, list(ano=PNAD$ano, UF=PNAD$UF, sexo=PNAD$sexo), mean)  
-  
-  PNAD <- PNAD %>% 
-    unique()
-  
+
   PNAD <- dcast(PNAD,ano + UF ~ sexo, value.var="x")
+  
+  PNAD <- PNAD %>%
+    unique()
 
-  PNAD$difrenda <- PNAD$homem/PNAD$mulher
+  PNAD_comb <- rbind(PNAD_comb, PNAD)
+  
+}
 
-    }
+PNAD_comb$difrenda <- PNAD_comb$homem/PNAD_comb$mulher
 
-PNAD$regiao <- case_when(PNAD$UF %in% c("PR","SC","RS") ~ "sul",
-                         PNAD$UF %in% c("RJ","SP","MG","ES") ~ "sudeste", 
-                         PNAD$UF %in% c("DF","MT","GO","MS") ~ "centro-oeste",
-                         PNAD$UF %in% c("RO","AC","AM","RR","PA","AP","TO") ~ "norte",
-                         TRUE ~ "nordeste")
+PNAD_comb$regiao <- case_when(PNAD_comb$UF %in% c("PR","SC","RS") ~ "sul",
+                              PNAD_comb$UF %in% c("RJ","SP","MG","ES") ~ "sudeste", 
+                              PNAD_comb$UF %in% c("DF","MT","GO","MS") ~ "centro-oeste",
+                              PNAD_comb$UF %in% c("RO","AC","AM","RR","PA","AP","TO") ~ "norte",
+                              TRUE ~ "nordeste")
