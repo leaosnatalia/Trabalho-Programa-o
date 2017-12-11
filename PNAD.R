@@ -6,18 +6,27 @@
 rm(list = ls())
 
 # instalar pacotes
-pacman::p_load(tidyverse, haven,
-               janitor, formattable )
+# pacman::p_load(tidyverse, haven,
+#               janitor, formattable, shiny )
 
 library(tidyverse)
 library(haven) # pacote para importar dados
 library(janitor) # pacote para sumarizar dados
 library(formattable) # mudar valores para porcentagens
 library(reshape2)
+library(hrbrthemes)
+library(stringr)
+library(readr)
+library(rvest)
+library(viridis)
+library(shiny)
 
 setwd("C:/Users/leaos/Desktop/TrabalhoR/Dados")
 
 options(scipen = 999) 
+
+PNAD_comb <- NULL
+mapa_est_geral <- NULL
 
 #Abrindo o banco de dados
 
@@ -36,8 +45,8 @@ getRenameList <- function(i){
     c(v0003="UF", v2997="peso", v2103="sexo", v2105="idade", v0303="raca", v2227="edu", v2308="renda"),
     c(v0010="UF", v9991="peso", v0303="sexo", v0805="idade", v2301="raca", v0317="edu", v0537="renda"),
     c(uf="UF", v4729="peso", v0302="sexo", v8005="idade", v0404="raca", v0607="edu", v9532="renda"),
-    c(UF="UF", v4729="peso", V0302="sexo", V8005="idade", V0404="raca", V0607="edu", V9532="renda"),
-    c(UF="UF", v4729="peso", V0302="sexo", V8005="idade", V0404="raca", V6007="edu", V9532="renda")
+    c(UF="UF", V4729="peso", V0302="sexo", V8005="idade", V0404="raca", V0607="edu", V9532="renda"),
+    c(UF="UF", V4729="peso", V0302="sexo", V8005="idade", V0404="raca", V6007="edu", V9532="renda")
   )  
 }
 
@@ -91,46 +100,81 @@ getMutateCaseEdu <- function(i,edu){
   ) 
 }
 
-PNAD_comb <- data.frame()
-
-for (i in 1:1) {
-  #names(PNAD1976_orig)
-  if(i==1){
-    PNAD_orig <- read_spss(getFileName(i))
-  } else {
-    PNAD_orig <- read.delim2(getFileName(i))
+savePNAD_comb <- function() {
+  PNAD_aux <- data.frame()
+  
+  for (i in 3:5) {
+    #names(PNAD1976_orig)
+    if(i==1){
+      PNAD_orig <- read_spss(getFileName(i))
+    } else {
+      PNAD_orig <- read.delim2(getFileName(i))
+    }
+    
+    PNAD <- PNAD_orig %>%
+      plyr::rename(getRenameList(i)) %>% 
+      select(UF, peso, sexo, idade, raca, edu, renda)
+  
+    PNAD <- PNAD %>% 
+      mutate(UF = getMutateCaseUF(i, UF)) %>% 
+      mutate(sexo = getMutateCaseSexo(i, sexo)) %>% 
+      mutate(idade = getMutateCaseIdade(i, idade)) %>% 
+      mutate(edu = getMutateCaseEdu(i, edu))
+  
+    PNAD <- PNAD %>% 
+      filter(idade=="25a54" & !is.na(renda) & (edu=="ensmedio"))
+  
+    PNAD$ano <- getAnoPNAD(i)
+  
+    PNAD <- aggregate(PNAD$renda, list(ano=PNAD$ano, UF=PNAD$UF, sexo=PNAD$sexo), mean)  
+  
+    PNAD <- dcast(PNAD,ano + UF ~ sexo, value.var="x")
+    
+    PNAD <- PNAD %>%
+      unique()
+    
+    PNAD_aux <- rbind(PNAD_aux, PNAD)
   }
   
-  PNAD <- PNAD_orig %>%
-    plyr::rename(getRenameList(i)) %>% 
-    select(UF, peso, sexo, idade, raca, edu, renda)
-
-  PNAD <- PNAD %>% 
-    mutate(UF = getMutateCaseUF(i, UF)) %>% 
-    mutate(sexo = getMutateCaseSexo(i, sexo)) %>% 
-    mutate(idade = getMutateCaseIdade(i, idade)) %>% 
-    mutate(edu = getMutateCaseEdu(i, edu))
-
-  PNAD <- PNAD %>% 
-    filter(idade=="25a54" & !is.na(renda) & (edu=="ensmedio"))
-
-  PNAD$ano <- getAnoPNAD(i)
-
-  PNAD <- aggregate(PNAD$renda, list(ano=PNAD$ano, UF=PNAD$UF, sexo=PNAD$sexo), mean)  
-
-  PNAD <- dcast(PNAD,ano + UF ~ sexo, value.var="x")
+  PNAD_aux$difrenda <- PNAD_aux$homem/PNAD_aux$mulher
   
-  PNAD <- PNAD %>%
-    unique()
+  PNAD_aux$regiao <- case_when(PNAD_aux$UF %in% c("PR","SC","RS") ~ "sul",
+                               PNAD_aux$UF %in% c("RJ","SP","MG","ES") ~ "sudeste", 
+                               PNAD_aux$UF %in% c("DF","MT","GO","MS") ~ "centro-oeste",
+                               PNAD_aux$UF %in% c("RO","AC","AM","RR","PA","AP","TO") ~ "norte",
+                                TRUE ~ "nordeste")
 
-  PNAD_comb <- rbind(PNAD_comb, PNAD)
-  
+  write.csv(PNAD_aux, "PNAD_comb.csv")
 }
 
-PNAD_comb$difrenda <- PNAD_comb$homem/PNAD_comb$mulher
+loadMapa <- function(){
+  aux <- NULL
+  if(is.null(mapa_est_geral)){
+    aux <- read_csv("mapa_est_geral.csv")
+    aux <- aux %>% 
+      rename(UF = sigla)
+  }
+  assign("mapa_est_geral", aux, envir = .GlobalEnv)
+}
 
-PNAD_comb$regiao <- case_when(PNAD_comb$UF %in% c("PR","SC","RS") ~ "sul",
-                              PNAD_comb$UF %in% c("RJ","SP","MG","ES") ~ "sudeste", 
-                              PNAD_comb$UF %in% c("DF","MT","GO","MS") ~ "centro-oeste",
-                              PNAD_comb$UF %in% c("RO","AC","AM","RR","PA","AP","TO") ~ "norte",
-                              TRUE ~ "nordeste")
+loadPNAD <- function(){
+  aux <- NULL
+  if(is.null(PNAD_comb)){
+    aux <- read_csv("PNAD_comb.csv")
+  }
+  assign("PNAD_comb", aux, envir = .GlobalEnv)
+}
+
+getLineChartData <- function(anoFiltro){
+  PNAD_filtro <- PNAD_comb %>% 
+    filter(ano == anoFiltro)
+
+  dados_mapa <- mapa_est_geral %>% 
+     left_join(PNAD_filtro, by="UF")
+   
+  dados_mapa
+}
+
+#savePNAD_comb()
+loadMapa()
+loadPNAD()
